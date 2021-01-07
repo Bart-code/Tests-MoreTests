@@ -7,24 +7,21 @@
 
 using namespace std;
 
-struct Date
-{
-    int years, months, days;
-};
-
 CMarkup initFile( string );
 void addIvent( CMarkup* );
-string konwersjaIntNaString( int );
-int konwersjaStringNaInt( string );
+string convertIntegerToString( int );
+int convertStringToInteger( string );
 void showAllIvents( CMarkup* );
-Date getDateFromString( string );
+int getDateFromString( string );
 void compareDates( CMarkup* );
-Date getDateFromFile( string , CMarkup* );
+int getDateFromFile( string , CMarkup* );
 void compareAmounts( CMarkup* );
 int getAmountFromFile( string , CMarkup* );
 string getCurrentDateTime( void );
 int getDaysCountSelectedMonth( string );
-
+bool isDateCorrect( string );
+int getLastDayDateCurrentMonth( void );
+string changeDateFormat( string );
 
 int main()
 {
@@ -73,7 +70,7 @@ int main()
         case 6:
         {
 
-            cout<<"Enter date in mm-yyyy format: ";
+            cout<<"Enter date in yyyy-mm-dd format: ";
             cin>>date;
             cout<<"Selected month has " << getDaysCountSelectedMonth(date) << " days"<<endl;
             break;
@@ -110,8 +107,13 @@ void addIvent(CMarkup * plikXml )
 
     string date, item, amount;
 
-    cout<<"Set date of ivent (in format rrrr-mm-dd): ";
-    cin>>date;
+
+    do
+    {   cout<<"Set date of ivent (in format rrrr-mm-dd): ";
+        cin>>date;
+    }
+    while(!(isDateCorrect(date)));
+    date=convertIntegerToString(getDateFromString(date));
     cout<<"Set name of ivent: "<<endl;
     cin.ignore();
     getline(cin,item);
@@ -129,7 +131,7 @@ void addIvent(CMarkup * plikXml )
     plikXml->Save( "PlikZDatami.xml" );
 }
 
-string konwersjaIntNaString(int liczba)
+string convertIntegerToString(int liczba)
 {
     ostringstream ss;
     ss << liczba;
@@ -137,7 +139,7 @@ string konwersjaIntNaString(int liczba)
     return str;
 }
 
-int konwersjaStringNaInt(string liczba)
+int convertStringToInteger(string liczba)
 {
     int liczbaInt;
     istringstream iss(liczba);
@@ -158,29 +160,24 @@ void showAllIvents( CMarkup* plikXml)
         plikXml->FindElem("Name");
         cout<<endl<<plikXml->GetData()<<endl;
         plikXml->FindElem("Date");
-        cout<<plikXml->GetData()<<endl;
+        cout<< changeDateFormat(plikXml->GetData())<<endl;
         plikXml->FindElem("Amount");
         cout<<plikXml->GetData()<<endl;
         plikXml->OutOfElem();
-
     }
 }
 
-Date getDateFromString(string dateInString)
+int getDateFromString(string dateInString)
 {
-    Date newDate;
-    string someString=dateInString.substr(0,4);
-    newDate.years=konwersjaStringNaInt(someString);
-    someString=dateInString.substr(5,2);
-    newDate.months=konwersjaStringNaInt(someString);
-    someString=dateInString.substr(8,2);
-    newDate.days=konwersjaStringNaInt(someString);
-    return newDate;
+    int newDate;
+    string someString=dateInString.erase(4,1);
+    someString=someString.erase(6,1);
+    return convertStringToInteger(someString);
 }
 
 void compareDates(CMarkup* plikXml)
 {
-    Date ivent1Date, ivent2Date;
+    int ivent1Date, ivent2Date;
     string ivent1Name, ivent2Name;
     cout<<"Enter name of first ivent: ";
     cin>>ivent1Name;
@@ -190,32 +187,14 @@ void compareDates(CMarkup* plikXml)
     ivent1Date=getDateFromFile( ivent1Name, plikXml);
     ivent2Date=getDateFromFile( ivent2Name, plikXml);
 
-    if(ivent1Date.years<ivent2Date.years) cout<<"First ivent is older"<<endl;
-    else if(ivent1Date.years>ivent2Date.years) cout<<"Second ivent is older"<<endl;
-    else
-    {
-        if(ivent1Date.months<ivent2Date.months) cout<<"First ivent is older"<<endl;
-        else if(ivent1Date.months>ivent2Date.months) cout<<"Second ivent is older"<<endl;
-        else
-        {
-            if(ivent1Date.days<ivent2Date.days) cout<<"First ivent is older"<<endl;
-            else if(ivent1Date.days>ivent2Date.days) cout<<"Second ivent is older"<<endl;
-            else
-            {
-                cout<<"Ivent's dates are same"<<endl;
+    if(ivent1Date<ivent2Date) cout<<"First ivent is older"<<endl;
+    else if(ivent1Date>ivent2Date) cout<<"Second ivent is older"<<endl;
+    else cout<<"Ivent's dates are same"<<endl;
 
-            }
-        }
-    }
 }
 
-Date getDateFromFile(string iventName, CMarkup* plikXml)
+int getDateFromFile(string iventName, CMarkup* plikXml)
 {
-    Date date;
-    date.days=0;
-    date.months=0;
-    date.years=0;
-    string dateInString="";
     plikXml->ResetPos();
     plikXml->FindElem();
     plikXml->IntoElem();
@@ -227,13 +206,10 @@ Date getDateFromFile(string iventName, CMarkup* plikXml)
         if(plikXml->GetData()==iventName)
         {
             plikXml->FindElem("Date");
-            dateInString=plikXml->GetData();
-            date=getDateFromString(dateInString);
-            break;
+            return convertStringToInteger(plikXml->GetData());
         }
         plikXml->OutOfElem();
     }
-    return date;
 }
 
 void compareAmounts(CMarkup* plikXml)
@@ -272,7 +248,7 @@ int getAmountFromFile(string iventName, CMarkup* plikXml)
         {
             plikXml->FindElem("Amount");
             amountInString=plikXml->GetData();
-            amount=konwersjaStringNaInt(amountInString);
+            amount=convertStringToInteger(amountInString);
         }
         plikXml->OutOfElem();
     }
@@ -292,8 +268,9 @@ string getCurrentDateTime(void )
 
 int getDaysCountSelectedMonth( string date )
 {
-    int month=konwersjaStringNaInt(date.substr(0,2));
-    int years=konwersjaStringNaInt(date.substr(3,4));
+
+    int years=convertStringToInteger(date.substr(0,4));
+    int month=convertStringToInteger(date.substr(5,2));
 
     if(month==1||month==3||month==5||month==7||month==8||month==10||month==12) return 31;
     else if(month==4||month==6||month==9||month==11) return 30;
@@ -301,3 +278,58 @@ int getDaysCountSelectedMonth( string date )
     else if(month==2 && (years % 4) != 0) return 28;
     else return 0;
 }
+
+int getLastDayDateCurrentMonth( void )
+{
+    string date=getCurrentDateTime();
+    string daysCountCurrentMonth=date.substr(8,2);
+    int dateInteger;
+    date=date.replace(8,2, daysCountCurrentMonth);
+    dateInteger=getDateFromString(date);
+    return dateInteger;
+}
+
+bool isDateCorrect( string date)
+{
+    int datePart;
+    int maxDate = getLastDayDateCurrentMonth();
+    int dateInteger = getDateFromString(date);
+    int daysMaxCount = getDaysCountSelectedMonth( date );
+
+    if(date.length()!=10)
+    {
+        cout<<"The date has incorrect format"<<"1"<<endl;
+        return false;
+    }
+    if( dateInteger > maxDate || dateInteger < 20000101)
+    {
+        cout<<"The date has incorrect format"<<"2"<<endl;
+        return false;
+    }
+    datePart=convertStringToInteger(date.substr(5,2));
+    if(datePart>12 || datePart < 1)
+    {
+        cout<<"The date has incorrect format"<<"3"<<endl;
+        return false;
+    }
+
+    datePart=convertStringToInteger(date.substr(8,2));
+    if(datePart>daysMaxCount || datePart < 1)
+    {
+        cout<<"The date has incorrect format"<<"4"<<endl;
+        return false;
+    }
+    return true;
+}
+
+string changeDateFormat( string date)
+{
+    string dateString, years, months, days;
+    years = date.substr(0,4);
+    months = date.substr(4,2);
+    days = date.substr(6,2);
+    dateString = years + "-" + months + "-" + days;
+    return dateString;
+}
+
+
